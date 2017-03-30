@@ -1,0 +1,22 @@
+@@exp:FILE_LOG@@ {
+        rotate 7
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+        maxsize 1M
+}
+
+@@exp:DIR_LOG_SOURCES@@/*.log
+{
+        rotate 7
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+        maxsize 1M
+}
+
+

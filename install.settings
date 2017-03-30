@@ -1,0 +1,51 @@
+##
+## ChangeLog
+##
+## @author Dr. John X Zoidberg <drjxzoidberg@gmail.com>
+## @version 1.1.0
+## @date 2017-03-27
+##  - added group.
+##
+## @author Dr. John X Zoidberg <drjxzoidberg@gmail.com>
+## @version 1.0.0
+## @date 2017-02-21
+##  - first version.
+##
+
+
+
+## generic version 1.1.0
+
+##
+## usually you would change only these specific.
+##
+
+PRG_NAME="backup"
+
+##
+## used as prefix for installed files.
+##
+GROUP=
+
+PREFIX=/usr/local
+PREFIX_BIN="${PREFIX}/bin"
+PREFIX_SHARE="${PREFIX}/share"
+EXEC_PREFIX="${GROUP:+${GROUP}-}"
+
+
+
+## program specific
+
+
+
+DIR_CONF=\~/\".${GROUP}/${PRG_NAME}\"
+DIR_LOG=\"\${DIR_CONF}/logs\"
+
+FILE_LOG=\"\${DIR_LOG}/${PRG_NAME}.log\"
+
+DIR_LOG_SOURCES=\"\${DIR_LOG}/sources\"
+
+SOURCES_CONF=\"\${DIR_CONF}/sources.conf\"
+
+CONF=\"\${DIR_CONF}/${PRG_NAME}.conf\"
+

@@ -1,0 +1,768 @@
+#!/bin/bash
+
+
+
+##
+## sync defined sources
+##
+
+
+##
+## ChangeLog
+##
+##
+## @author Dr. John X. Zoidberg <drjxzoidberg@gmail.com>
+## @version 0.1.0
+## @date 2017-03-22
+##  - first release.
+##
+
+
+
+##
+## Tag: log
+##
+
+LOG_LEVEL_TRACE=0
+LOG_LEVEL_DEBUG=1
+LOG_LEVEL_INFO=2
+LOG_LEVEL_WARNING=3
+LOG_LEVEL_ERROR=4
+LOG_LEVEL_OFF=5
+
+LOG_LEVEL=${LOG_LEVEL:-${LOG_LEVEL_INFO}}
+
+isLogLevelOn ()
+{
+  [ $1 -ge ${LOG_LEVEL} ]
+}
+
+log ()
+{
+  local level
+  level="$1"
+  shift
+
+  if ! isLogLevelOn "${level}" ; then
+    return 0
+  fi
+
+  if [ -n "${FILE_LOG}" ] ; then
+    exec 3>>${FILE_LOG}
+  else
+    echo "STDOUT"
+    exec 3>&1
+  fi
+
+  echo "$(date +%Y%m%d-%H%M%S) $@" >&3
+
+  exec 3>&-
+}
+
+logTrace ()
+{
+  log ${LOG_LEVEL_TRACE} "[TT] $@"
+}
+
+logDebug ()
+{
+  log ${LOG_LEVEL_DEBUG} "[DD] $@"
+}
+
+logInfo ()
+{
+  log ${LOG_LEVEL_INFO} "[II] $@"
+}
+
+logWarning ()
+{
+  log ${LOG_LEVEL_WARNING} "[WW] $@"
+}
+
+logError ()
+{
+  log ${LOG_LEVEL_ERROR} "[EE] $@"
+}
+
+##
+## End-Of-Tag: log
+##
+
+
+##
+## Log an error and exit if is fatal.
+##
+## @param * error to be logged.
+##
+## @exit
+##
+error ()
+{
+  local console
+  console="$1"
+  shift
+  if isTrue "$1" ; then
+    echo [FF] "$@"
+  else
+    logError "$@"
+  fi
+  exit 1
+}
+
+
+##
+## Return 0 if value is:
+##   o) true;
+##   o) yes;
+##   0) on.
+## Otherwise return 1. Empty value return 1.
+##
+## @param 1 [mandatory] value value to be tested.
+##
+## @return 0 is value is in {true, yes, on}.
+##
+isTrue ()
+{
+  [ -z "$1" ] && return 1
+  printf "true,yes,on" | grep -q '\(^'$1',\|,'$1',\|,'$1'$\)'
+}
+
+##
+## Reuturn ! isTrue 'value'.
+##
+## @param 1 [mandatory] value value to be tested.
+##
+## @return ! isTrue 'value'.
+##
+isFalse ()
+{
+  if isTrue "$1" ; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+
+##
+## Echo value with first and last char removed.
+## Example:
+## unwrap hello => ell
+##
+## @param 1 [mandatory] value value from which remove first and last char.
+##
+## @echo value with first and last char removed.
+##
+unwrap ()
+{
+  local tmp
+  tmp="${1#?}"
+  printf '%s' "${tmp%?}"
+}
+
+##
+## @TODO
+##
+getOptions ()
+{
+#  args=$(getopt -n${CMD_NAME} -osu:c: --long=system,username:,configuration:,setup -- $*)
+  args=$(getopt -n${CMD_NAME} -os:c: --long=source:,configuration:,setup -- $*)
+  if [ $? -ne 0 ] ; then
+  	return 1
+  fi
+
+  set -- $args
+
+  while [ -n "$1" ] ; do
+    case "$1" in
+
+      -c | --configuration)
+        shift
+        ## @TODO: gedit breaks syntax hilighting
+        #CONF="$(unwrap "$1")"
+        CONF=${1#?}
+        CONF=${CONF%?}
+        if  [ ! -r "${CONF}" ] ; then
+          error false "specified configuration file '${CONF}' is not readable."  
+        fi
+      ;;
+
+      -s | --source)
+        shift
+        if [ -z "${SOURCES}" ] ; then
+          SOURCES="$(unwrap "$1")"
+        else
+          SOURCES="${SOURCES} $(unwrap "$1")"
+        fi
+      ;;
+
+      --setup)
+        SETUP=true
+      ;;
+
+    esac
+    shift
+  done
+}
+
+#usage () {
+#  cat <<-EOD
+#	${CMD_NAME} [--system] [--username [<username>]] 
+#	  --system | -s
+#	    enable system MODE
+#	    must be root
+#
+#	  --user | -u [<username>]
+#	    enable user MODE
+#	    must be root to specify <username>
+#EOD
+#}
+##
+## @TODO
+##
+usage ()
+{
+  cat <<-EOD
+  ${CMD_NAME} [--configuration] [--source <source>]... 
+    --configuration | -c
+      alternative configuration to be read.
+
+    --source | -s <source>
+      limit backup only to sources specified with this option.
+      can be repeated multiple times.
+EOD
+}
+
+
+##
+## Return 0 if 'whoami' return 'root'.
+##
+## @return 0 if 'whoami' return 'root'.
+##
+isRoot ()
+{
+  [ "$(whoami)" = "root" ]
+}
+
+
+## =====
+##
+## Tag: common
+## 
+## =====
+
+##
+## @TODO
+##
+## @echo
+##
+retrieveBackupSourcesRaw ()
+{
+  local backup_conf
+  backup_conf="$1"
+  if [ ! -r "${backup_conf}" ] ; then
+    logWarning "[WW] configuration is not readable '${backup_conf}'."
+    return 1
+  fi
+  ## else...
+
+  grep '^.*:.\+[[:space:]]*{[[:space:]]*$' "${backup_conf}" \
+   | sed -e 's/.*:\(.*\)[[:space:]]*{.*/\1/1'
+}
+
+
+##
+## @TODO
+##
+## @echo
+##
+retrieveBackupSources ()
+{
+  local backup_conf
+  backup_conf="$1"
+  if [ ! -r "${backup_conf}" ] ; then
+    logWarning "[WW] configuration is not readable '${backup_conf}'."
+    return 1
+  fi
+  ## else...
+
+  local s
+  local t
+  t=
+  while read s ; do
+    if [ -n "${t}" ] ; then 
+      printf '%s' "${t} "
+    fi
+    t="$s"
+  done < <(retrieveBackupSourcesRaw "${backup_conf}")
+  printf '%s' "${t}"
+}
+
+##
+## @TODO
+##
+## @echo
+##
+retrieveSourceConf ()
+{
+  local backup_conf
+  backup_conf="$1"
+  if [ ! -r "${backup_conf}" ] ; then
+    logWarning "[WW] configuration is not readable '${backup_conf}'."
+    return 1
+  fi
+  ## else...
+
+  local s
+  s="$2"
+  if [ -z "${s}" ] ; then
+    logWarning "[WW] source cannot be empty."
+    return 1
+  fi
+  ## else...
+
+  local s_conf
+  s_conf="$3"
+  if [ -z "${s_conf}" ] ; then
+    exec 3>&1
+  elif [ -n ${s_conf} -a ! -w "${s_conf}" ] ; then
+    logError "[EE] source '${s}' configuration file '${s_conf}' must be writable."
+    return 1
+  else 
+    exec 3>"${s_conf}"
+  fi
+  ## else...
+
+  local res 
+  set -o pipefail
+
+  sed -n -e '/^.*:'"${s}"'[[:space:]]*{[[:space:]]*$/,/^[[:space:]*}[[:space:]]*$/p' \
+    "${backup_conf}" \
+   | sed -e '1d' -e '$d' -e 's/^[[:space:]]*//1' \
+       >&3
+  res=$?
+  set +o pipefail
+ 
+  exec 3>&-
+
+  return ${res}
+}
+
+##
+## @TODO
+##
+## @echo
+##
+replaceTags ()
+{
+  local s
+  s="$1"
+
+  shift
+
+  local expr
+  expr=""
+
+  local t_name
+  local t_value
+  while [ -n "$1" ] ; do
+    t_name="${1%%:*}"
+    t_value="${1#${t_name}:}"
+    expr="$expr -e s/%{${t_name}}/\"${t_value}\"/g"
+    shift
+  done
+  printf '%s' "$s" | eval sed ${expr} 
+}
+
+##
+## @echo
+##
+getFileSize ()
+{
+  local size
+
+  [ ! -r "$1" ] && return 1
+
+  stat -c %s "$1"
+}
+
+##
+## @TODO
+##
+truncateFileToSize ()
+{
+  local size
+  size="$(getFileSize "$1")"
+  if [ $? -ne 0 ] ; then
+    return 1
+  fi
+  ## else...
+
+  ## 10K
+  if [ ${size} -le $((10 * 1024)) ] ; then
+    return 1
+  fi
+  ## else...
+
+  ## truncate 5K
+  logInfo "truncating '$1'."
+  truncate -s $((5 * 1024)) "$1"
+}
+
+##
+## @TODO
+##
+#truncateSourceLog () {
+#  if truncateFileToSize "$1" ; then
+#    sed -i -e '1,/^$/d' "$1"
+#  fi
+#}
+
+
+executePreSync ()
+{
+  local syncBackend
+  syncBackend="$1"
+  shift
+
+  if [ -z "${syncBackend}" ] ; then
+    return 0
+  fi
+  ## else...
+
+  logInfo "PRE syncBackend: '${syncBackend}'."
+
+  . ${syncBackend} "$@"
+}
+
+executePostSync ()
+{
+  local syncBackend
+  syncBackend="$1"
+  shift
+
+  if [ -z "${syncBackend}" ] ; then
+    return 0
+  fi
+  ## else...
+
+  logInfo "POST syncBackend: '${syncBackend}'."
+
+  . ${syncBackend} "$@"
+}
+
+##
+## @TODO
+##
+backupSourceDo ()
+{
+  local sources_conf
+  sources_conf="$1"
+
+  local s
+  s="$2"
+
+  while read c ; do
+    ## if ${c} does not start with #
+    if [ "${c#\#}" = "${c}" ] ; then
+      eval "export ${c}"
+    fi
+  done < <(retrieveSourceConf "${sources_conf}" "${s}")
+
+  if ! isTrue "${ENABLED}" ; then
+    logWarning "skipping source '${s}' as it is not enabled [ENABLED]."
+    return 0
+  fi
+
+ 
+  if [ -z "${SOURCE}" ] ; then
+  	logError "SOURCE must be defined."
+  fi
+
+  if [ -z "${DESTINATION}" ] ; then
+  	logError "DESTINATION must be defined."
+  fi
+
+  ### ${DIR_LOG_SOURCES} must exists
+  #if  [ -z "${LOG}" ] ; then
+  LOG="${DIR_LOG_SOURCES}/${s}.log"
+  #fi
+
+  #truncateSourceLog "${LOG}"
+
+  if isTrue "${DELETE}" ; then
+    DELETE="--delete"
+  else
+    DELETE=
+  fi
+  if isTrue "${DELETE_EXCLUDED}" ; then
+    DELETE_EXCLUDED="--delete-excluded"
+  else
+    DELETE_EXCLUDED=
+  fi
+
+  if isTrue "${HIDDEN}" ; then
+    HIDDEN="--exclude=/[^.]*"
+  else
+    HIDDEN=
+  fi
+  logDebug "HIDDEN: '${HIDDEN}'."
+
+  DESTINATION="$(replaceTags "${DESTINATION}" "source:${s}")"
+
+	if [ -n "${EXCLUDE_FROM}" ] ; then
+    EXCLUDE_FROM="--exclude-from=$(replaceTags "${EXCLUDE_FROM}" "source:${s}")"
+  fi
+
+  if [ -n "${PRE_SYNC}" ] ; then
+    PRE_SYNC="$(replaceTags "${PRE_SYNC}" "source:${s}")"
+  fi
+  if [ -n "${PRE_SYNC}" ] ; then
+    POST_SYNC="$(replaceTags "${POST_SYNC}" "source:${s}")"
+  fi
+  
+  ## -a => archive mode; same as -rlptgoD (no -H)
+  ##       -r     recurse into directories
+  ##       -l     copy symlinks as symlinks
+  ##       -p     preserve permissions
+  ##       -t     preserve times
+  ##       -g     preserve group
+  ##       -o     preserve owner (super-user only)
+  ##       -D     same as --devices --specials
+  ##              --devices preserve device files (super-user only)
+  ##              --specials preserve special files
+  ##       -H [!] preserve hard links
+  ## -v => 
+  ## -h => output numbers in a human-readable format
+  ## --progress =>
+  ## --stats    =>
+  ## -i =>
+  ## --log-file =>
+  
+  local res
+
+  local tstamp
+  tstamp="$(date +%Y%m%d-%H%M%S)"
+  logInfo "backing up source: '${s}'; specific log is in '${LOG}' with id '${tstamp}'."
+  echo >>"${LOG}"
+  echo "=== ${tstamp} start syncing source '${s}'." >>"${LOG}"
+
+  if ! executePreSync "${PRE_SYNC}" \
+         "${LOG}" \
+         ${DELETE} \
+         ${DELETE_EXCLUDED} \
+         ${HIDDEN} \
+         ${EXCLUDE_FROM} \
+         ${CUSTOM_OPTIONS} \
+         ${SOURCE} \
+         ${DESTINATION} ; then
+    logError "backup of '${s}' failed."
+    return 1
+  fi    
+
+  rsync -av -Hh --progress --stats -i \
+    --log-file "${LOG}" \
+    ${DELETE} \
+    ${DELETE_EXCLUDED} \
+    ${HIDDEN} \
+    ${EXCLUDE_FROM} \
+    ${CUSTOM_OPTIONS} \
+    ${SOURCE} \
+    ${DESTINATION}
+  res=$?
+
+  if ! executePostSync "${POST_SYNC}" ; then
+    logError "backup of '${s}' failed."
+    return 1
+  fi 
+
+  echo "--- $(date +%Y%m%d-%H%M%S) end syncing source '${s}'." >>"${LOG}"
+  if [ ${res} -ne 0 ] ; then
+    logError "backup of '${s}' failed."
+    return 1
+  else
+    logInfo "backup of '${s}' completed."
+  fi
+}
+
+
+
+backupSource ()
+{
+  local sources_conf
+  sources_conf="$1"
+  if [ ! -r "${sources_conf}" ] ; then
+    logError "configuration is not readable '${sources_conf}'."
+    return 1
+  fi
+  ## else...
+
+  local s
+  s="$2"
+  if [ -z "${s}" ] ; then
+    logWarning "empty source: skipped."
+    return 0
+  fi
+  ## else...
+
+  (
+    backupSourceDo "${sources_conf}" "${s}" 
+  )
+}
+
+## =====
+##
+## End-Of-Tag: common
+## 
+## =====
+
+
+##
+## @TODO
+## @use global SOURCES
+##
+backup ()
+{
+  local sources_conf
+  sources_conf="$1"
+  if [ ! -r "${sources_conf}" ] ; then
+    logWarning "source definitions is not readable '${sources_conf}'; no sources loaded."
+    return 0
+  fi
+  ## else...
+
+  local sources
+  sources="$(retrieveBackupSources "${sources_conf}")"
+  if [ $? -ne 0 ] ; then
+    logError "cannot retrieve sources: '${sources}'. "
+    return 1
+  fi
+  logDebug "retrieved backup sources: '${sources}'."
+
+  local errors
+  errors=0
+
+  #local s
+  #while read s ; do 
+  for s in ${sources} ; do
+  	if [ -z "${SOURCES}" -o "${SOURCES}" = "${s}" ] || grep -q '\(^'${s}'[[:space:]]\|[[:space:]]'${s}'[[:space:]]\|[[:space:]]'${s}'$\)' <<<"${SOURCES}" ; then
+      backupSource "${sources_conf}" "${s}"
+      if [ $? -ne 0 ] ; then
+        errors=$(( errors + 1 ))
+      fi
+    else
+      logWarning "skipping '${s}' source as it is not in specified sources '${SOURCES}'."
+    fi
+  done
+  #done <<<${sources}
+
+  return ${errors}
+}
+
+## =====
+##
+## End-Of-Tag: backupUser
+## 
+## =====
+
+
+
+setup ()
+{
+    if ! mkdir -p "${DIR_CONF}" ; then
+      error true "cannot create '\$DIR_CONF: ${DIR_CONF}'."
+    fi
+
+    cp @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@logrotate.conf "${DIR_CONF}/logrotate.conf" || return 1
+    if [ ! -r "${CONF}" ] ; then
+      cp @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@conf "${CONF}" || return 1
+    fi
+    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup || return 1
+    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse || return 1
+    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse-history || return 1
+    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-edit-sources || return 1
+    xdg-desktop-menu install @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.desktop || return 1
+    @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@unity-launcher.py ~/.local/share/applications/@@EXEC_PREFIX@@backup.desktop a || return 1
+}
+
+
+
+run ()
+{
+  if [ ! -d "${DIR_CONF}" ] ; then
+    error true "directory '\$DIR_CONF: ${DIR_CONF}' does not exist; please run '${PRG_NAME} --setup'."
+  fi
+
+  if [ ! -d "${DIR_LOG}" ] ; then
+    if ! mkdir -p "${DIR_LOG}" ; then
+      error true "cannot create '\$DIR_LOG: ${DIR_LOG}'."
+    fi
+  fi
+
+  if [ ! -d "${DIR_LOG_SOURCES}" ] ; then
+    if ! mkdir -p "${DIR_LOG_SOURCES}" ; then
+      error false "cannot create '\$DIR_LOG_SOURCES: ${DIR_LOG_SOURCES}'."
+    fi
+  fi
+
+  logInfo
+  logInfo "start."
+
+  if [ -f "${DIR_CONF}/logrotate.conf" ] ; then
+    logWarning "rotating logs."
+    logrotate --state "${DIR_CONF}/logrotate.status" "${DIR_CONF}/logrotate.conf"
+  fi
+  if backup "${SOURCES_CONF}" ; then
+    logInfo "completed successfully."
+  else
+    logError "completed with errors."
+    return 1
+  fi
+}
+
+
+## #####
+##
+## MAIN
+##
+## #####
+
+
+
+CMD_NAME="$(basename "$0")"
+WD="$(dirname "$0")"
+SETUP=false
+
+if ! getOptions "$@" ; then 
+  usage
+  exit 1
+fi
+
+
+## Tag: defaults
+
+DIR_CONF=@@DIR_CONF@@
+DIR_LOG=@@DIR_LOG@@
+DIR_LOG_SOURCES=@@DIR_LOG_SOURCES@@
+
+SOURCES_CONF=@@SOURCES_CONF@@
+
+FILE_LOG=@@FILE_LOG@@
+
+## this could arrive from options.
+CONF="${CONF:-@@CONF@@}"
+
+## End-Of-Tag defaults
+
+
+if [ -r "${CONF}" ] ; then
+. "${CONF}"
+fi
+
+
+if isTrue "${SETUP}" ; then
+  setup
+else
+  run
+fi
+

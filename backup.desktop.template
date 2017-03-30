@@ -1,0 +1,53 @@
+[Desktop Entry]
+Type=Application
+Version=1.1
+
+Exec=@@PREFIX_BIN@@/@@EXEC_PREFIX@@backup.sh
+
+Icon=@@GROUP@@-backup
+
+Terminal=false
+
+Name[it]=Backup
+Name=Backup
+Comment[it]=Esegue il backup 
+Comment=Run the backup
+
+Categories=Utility;Archiving;
+
+##
+## Only EditSources is enabled by default
+## you can enabled or add more
+##
+Actions=EditSources;
+
+
+##
+## This is for browsing you current backup.
+## You could replace @@BrowseCurrentBackup@@ with:
+##   nautilus sftp://<username>@<server>/<path-to-current>
+##
+[Desktop Action BrowseCurrentBackup]
+Exec=@@BrowseCurrentBackup@@
+Name[it]=Mostra il backup corrente
+Name=Browse the current backup
+Icon=@@GROUP@@-backup-browse
+
+##
+## This is for browsing backup history.
+## My typical configuration is to backup current to a server
+## and every night create an archive of such a "sync".
+##   nautilus sftp://<username>@<server>/<path-to-history>
+##
+[Desktop Action BrowseBackupHistory]
+Exec=@@BrowseBackupHistory@
+Name[it]=Mostra il backup corrente
+Name=Browse the current backup
+Icon=@@GROUP@@-backup-browse-history
+
+[Desktop Action EditSources]
+Exec=sh -c "gedit @@exp:SOURCES_CONF@@"
+Name[it]=Modifica le sorgenti
+Name=Edit sources
+Icon=@@GROUP@@-backup-edit-sources
+

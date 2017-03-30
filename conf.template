@@ -1,0 +1,25 @@
+##
+## base configuration directory.
+##
+DIR_CONF=@@DIR_CONF@@
+
+##
+## base directory for logs.
+## 
+DIR_LOG=@@DIR_LOG@@
+
+##
+## base directory for sources log.
+##
+DIR_LOG_SOURCES=@@DIR_LOG_SOURCES@@
+
+##
+## sources configuration file.
+##
+SOURCES_CONF=@@SOURCES_CONF@@
+
+##
+## program log file.
+##
+FILE_LOG=@@FILE_LOG@@
+
