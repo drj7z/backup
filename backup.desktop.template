@@ -4,7 +4,7 @@ Version=1.1
 
 Exec=@@PREFIX_BIN@@/@@EXEC_PREFIX@@backup.sh
 
-Icon=@@GROUP@@-backup
+Icon=@@FILE_PREFIX@@backup-run
 
 Terminal=false
 
@@ -31,7 +31,7 @@ Actions=EditSources;
 Exec=@@BrowseCurrentBackup@@
 Name[it]=Mostra il backup corrente
 Name=Browse the current backup
-Icon=@@GROUP@@-backup-browse
+Icon=@@FILE_PREFIX@@backup-browse
 
 ##
 ## This is for browsing backup history.
@@ -43,11 +43,11 @@ Icon=@@GROUP@@-backup-browse
 Exec=@@BrowseBackupHistory@
 Name[it]=Mostra il backup corrente
 Name=Browse the current backup
-Icon=@@GROUP@@-backup-browse-history
+Icon=@@FILE_PREFIX@@backup-browse-history
 
 [Desktop Action EditSources]
 Exec=sh -c "gedit @@exp:SOURCES_CONF@@"
 Name[it]=Modifica le sorgenti
 Name=Edit sources
-Icon=@@GROUP@@-backup-edit-sources
+Icon=@@FILE_PREFIX@@backup-edit-sources
 

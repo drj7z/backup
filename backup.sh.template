@@ -50,7 +50,7 @@ log ()
   if [ -n "${FILE_LOG}" ] ; then
     exec 3>>${FILE_LOG}
   else
-    echo "STDOUT"
+    #echo "STDOUT"
     exec 3>&1
   fi
 
@@ -669,19 +669,33 @@ backup ()
 
 setup ()
 {
+    echo "Creating configuration directory '${DIR_CONF}'."
     if ! mkdir -p "${DIR_CONF}" ; then
       error true "cannot create '\$DIR_CONF: ${DIR_CONF}'."
     fi
 
+    echo "Copying '${DIR_CONF}/logrotate.conf'."
     cp @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@logrotate.conf "${DIR_CONF}/logrotate.conf" || return 1
     if [ ! -r "${CONF}" ] ; then
+      echo "Copying '${CONF}'."
       cp @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@conf "${CONF}" || return 1
     fi
-    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup || return 1
-    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse || return 1
-    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse-history || return 1
-    xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-edit-sources || return 1
-    xdg-desktop-menu install @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.desktop || return 1
+    local novendor
+    if [ -z "${GROUP}" ] ; then 
+      novendor=--novendor
+    else novendor=
+    fi
+    for p in @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/icons/*.png ; do 
+      echo "Installing icon '$(basename "${p}")'."
+      xdg-icon-resource install ${novendor} --mode user --size 64 "${p}" "$(basename "${p}" .png)" || return 1
+    done
+    #xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup || return 1
+    #xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse || return 1
+    #xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-browse-history || return 1
+    #xdg-icon-resource install --mode user --size 64 @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.png @@EXEC_PREFIX@@backup-edit-sources || return 1
+    echo "Installing program desktop file 'backup.desktop'."
+    xdg-desktop-menu install ${novendor} @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@backup.desktop || return 1
+    echo "Adding program to laucher."
     @@PREFIX_SHARE@@/@@GROUP@@/@@PRG_NAME@@/@@EXEC_PREFIX@@unity-launcher.py ~/.local/share/applications/@@EXEC_PREFIX@@backup.desktop a || return 1
 }
 

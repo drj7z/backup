@@ -30,7 +30,9 @@ GROUP=
 PREFIX=/usr/local
 PREFIX_BIN="${PREFIX}/bin"
 PREFIX_SHARE="${PREFIX}/share"
-EXEC_PREFIX="${GROUP:+${GROUP}-}"
+
+FILE_PREFIX="${GROUP:+${GROUP}-}"
+EXEC_PREFIX="${FILE_PREFIX}"
 
 
 
@@ -38,7 +40,7 @@ EXEC_PREFIX="${GROUP:+${GROUP}-}"
 
 
 
-DIR_CONF=\~/\".${GROUP}/${PRG_NAME}\"
+DIR_CONF=\~/\".${GROUP:+${GROUP}/}${PRG_NAME}\"
 DIR_LOG=\"\${DIR_CONF}/logs\"
 
 FILE_LOG=\"\${DIR_LOG}/${PRG_NAME}.log\"

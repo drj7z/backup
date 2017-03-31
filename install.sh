@@ -52,7 +52,7 @@ removeQuotes ()
 ##
 install ()
 {
-  cat "${WD}/message_install.txt"
+  echo "Continue with 'backup' installation?"
   
   read -p 'Continue [y/N]?' a
   if [ "${a}" != "y" ] ; then
@@ -78,12 +78,26 @@ install ()
       "${WD}/build"/*
   done
 
-  sudo install -D "${WD}/build/${EXEC_PREFIX}backup.sh" ${PREFIX_BIN}/${EXEC_PREFIX}backup.sh || return 1
-  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}backup.desktop" ${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}backup.desktop || return 1
-  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}conf" ${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}conf || return 1
-  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}logrotate.conf" ${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}logrotate.conf || return 1
-  sudo install -D -m 0644 "${WD}/backup.png" ${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}backup.png || return 1
-  sudo install -D "${WD}/unity-launcher.py" ${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}unity-launcher.py || return 1
+  echo "Installing '${PREFIX_BIN}/${EXEC_PREFIX}backup.sh'."
+  sudo install -D "${WD}/build/${EXEC_PREFIX}backup.sh" "${PREFIX_BIN}/${EXEC_PREFIX}backup.sh" || return 1
+  
+  echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}backup.desktop'."
+  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}backup.desktop" "${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}backup.desktop" || return 1
+  
+  echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}conf'."
+  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}conf" "${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}conf" || return 1
+
+  echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}logrotate.conf'."
+  sudo install -D -m 0644 "${WD}/build/${EXEC_PREFIX}logrotate.conf" "${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}logrotate.conf" || return 1
+
+  echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}unity-launcher.py'."
+  sudo install -D "${WD}/unity-launcher.py" "${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}unity-launcher.py" || return 1
+  
+  echo "Installing icons to '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}'."
+  for p in "${WD}/icons"/*.png ; do
+    echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/icons/${EXEC_PREFIX}$(basename "${p}")'."
+    sudo install -D -m 0644 "${p}" "${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/icons/${EXEC_PREFIX}$(basename "${p}")" || return 1
+  done
 }
 
 
