@@ -604,6 +604,7 @@ backupSource ()
     return 0
   fi
   ## else...
+  uiNotify "Elaborating '${s}' source."
 
   (
     backupSourceDo "${sources_conf}" "${s}" 
@@ -743,11 +744,18 @@ run ()
 
 
 
+. @@PREFIX_LIB@@/modules/sh:w/ui/dialogs/@@FILE_PREFIX@@dialogs.sh
+
+
 CMD_NAME="$(basename "$0")"
 WD="$(dirname "$0")"
 SETUP=false
 
+uiDialogsInit
+
+
 if ! getOptions "$@" ; then 
+  uiDialogsClose
   usage
   exit 1
 fi
@@ -779,4 +787,14 @@ if isTrue "${SETUP}" ; then
 else
   run
 fi
+RES=$?
 
+uiDialogsClose
+
+if [ ${RES} -eq 0 ] ; then
+  uiMessage info --title "Backup" --text "Backup completed successfully."
+  exit 0
+elif [ ${RES} -ne 254 ] ; then
+  uiMessage error  --title "Backup" --text "Backup completed with errors."
+  exit 1
+fi
