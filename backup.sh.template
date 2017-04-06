@@ -101,7 +101,7 @@ error ()
   local console
   console="$1"
   shift
-  if isTrue "$1" ; then
+  if isTrue "${console}" ; then
     echo [FF] "$@"
   else
     logError "$@"
