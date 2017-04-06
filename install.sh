@@ -83,7 +83,7 @@ install ()
 
   echo "Installing modules"
   while read p ; do
-    sudo install -D -m 0644 "modules/${p}" "${PREFIX_LIB}/${GROUP}/modules/$(dirname "${p}")/${EXEC_PREFIX}$(basename "${p}")" || return 1
+    sudo install -D -m 0644 "modules/${p}" "${PREFIX_LIB}/modules/$(dirname "${p}")/${EXEC_PREFIX}$(basename "${p}")" || return 1
   done  < <(find modules -type f -printf '%P\n')
   
   echo "Installing '${PREFIX_SHARE}/${GROUP}/${PRG_NAME}/${EXEC_PREFIX}backup.desktop'."
