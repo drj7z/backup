@@ -744,7 +744,7 @@ run ()
 
 
 
-. @@PREFIX_LIB@@/modules/sh:w/ui/dialogs/@@FILE_PREFIX@@dialogs.sh
+. @@PREFIX_LIB@@/modules/sh/ui/dialogs/@@FILE_PREFIX@@dialogs.sh
 
 
 CMD_NAME="$(basename "$0")"
