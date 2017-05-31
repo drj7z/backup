@@ -1,0 +1,10 @@
+=== Issue BUG fixed in feature branch:
+Fixed in feature/TODO branch with commit TOTO
+
+=== Issue BUG feature branch merged in master:
+Merged in master with commit
+
+=== Pull Request accepred and merged:
+Fix tested and it is fine.
+Changes are fine.
+Pull request accepted and merged.
